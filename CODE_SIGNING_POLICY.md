@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This policy defines how official PulsePing binaries are built, reviewed, approved, and signed. Free code signing is planned to be provided by SignPath.io, with a certificate issued by the SignPath Foundation, subject to project acceptance.
+This policy defines how official PulsePing binaries are built, reviewed, approved, and signed. PulsePing is applying for **free code signing provided by SignPath.io, certificate by SignPath Foundation**. Project acceptance is pending; until then, all published Windows binaries are explicitly identified as unsigned.
 
 ## Source and licensing
 
@@ -18,10 +18,11 @@ This policy defines how official PulsePing binaries are built, reviewed, approve
 - The resulting standalone executable is initially treated as unsigned.
 - Only CI artifacts produced from the protected default branch or an approved release tag may enter the signing process.
 
-## Review and approval
+## Team roles, review, and approval
 
-- Maintainer and code reviewer: [Shubham Kasar](https://github.com/ishubhamkasar).
-- Signing approver: [Shubham Kasar](https://github.com/ishubhamkasar).
+- Authors and committers: [Shubham Kasar](https://github.com/ishubhamkasar).
+- Reviewers: [Shubham Kasar](https://github.com/ishubhamkasar).
+- Signing approvers: [Shubham Kasar](https://github.com/ishubhamkasar).
 - A signing request requires a successful CI build and manual approval.
 - The approver verifies the source revision, workflow result, artifact name, and intended version before signing.
 - Signing is denied for unreviewed forks, local binaries, failed builds, or artifacts not traceable to a repository revision.

@@ -40,6 +40,10 @@ PulsePing has no telemetry, advertising, analytics, account system, or cloud bac
 
 Please report security issues using the process in [SECURITY.md](SECURITY.md). Do not publish exploitable details in a public issue.
 
+## Code signing policy
+
+PulsePing is applying for **free code signing provided by SignPath.io, certificate by SignPath Foundation**. Approval is pending, so the current downloadable Windows binary remains explicitly marked as unsigned. Every future signing request must originate from the public GitHub Actions build and receive manual approval. See the complete [code signing policy](CODE_SIGNING_POLICY.md).
+
 ## Contributing
 
 Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
