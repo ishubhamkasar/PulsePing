@@ -4,12 +4,22 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      artifact_run_id:
+        description: Existing successful workflow run containing the unsigned artifact
+        required: false
+        type: string
+      release_tag:
+        description: Existing GitHub release tag that receives the unsigned evaluation archive
+        required: false
+        type: string
 
 permissions:
   contents: read
 
 jobs:
   build-windows-x64:
+    if: github.event_name != 'workflow_dispatch' || inputs.artifact_run_id == ''
     runs-on: windows-latest
 
     steps:
@@ -31,3 +41,30 @@ jobs:
           name: PulsePing-1.0-unsigned-win-x64
           path: artifacts/PulsePing1.0.exe
           if-no-files-found: error
+
+  publish-unsigned-evaluation-archive:
+    if: github.event_name == 'workflow_dispatch' && inputs.artifact_run_id != '' && inputs.release_tag != ''
+    runs-on: windows-latest
+    permissions:
+      actions: read
+      contents: write
+
+    steps:
+      - name: Download verified unsigned artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: PulsePing-1.0-unsigned-win-x64
+          path: artifacts
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.artifact_run_id }}
+
+      - name: Create evaluation archive
+        shell: pwsh
+        run: Compress-Archive -LiteralPath artifacts/PulsePing1.0.exe -DestinationPath artifacts/PulsePing1.0-unsigned-win-x64.zip -CompressionLevel Optimal -Force
+
+      - name: Attach archive to existing release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ inputs.release_tag }}" artifacts/PulsePing1.0-unsigned-win-x64.zip --clobber
