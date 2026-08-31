@@ -1,0 +1,25 @@
+.vs/
+.idea/
+.vscode/
+
+**/bin/
+**/obj/
+**/RecoveredBuildArtifacts/
+artifacts/
+TestResults/
+
+*.user
+*.suo
+
+# Never commit signing credentials or local secrets.
+*.pfx
+*.p12
+*.pem
+*.key
+*.snk
+*.cer
+*.crt
+.env
+.env.*
+secrets.*
+*.publishsettings
