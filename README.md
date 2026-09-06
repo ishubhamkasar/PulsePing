@@ -13,6 +13,7 @@ PulsePing is intentionally focused: it sends ICMP echo requests only to hostname
 - Open a host in an independent pop-out window.
 - Pin a pop-out window above other applications.
 - Check GitHub Releases quietly in the background on every launch, with a notification when an update is available. Manual checks are also available.
+- Download approved updates inside PulsePing with progress and cancellation, then choose Install and restart after checksum verification.
 - Light and dark themes.
 - Single-file, self-contained Windows x64 release.
 

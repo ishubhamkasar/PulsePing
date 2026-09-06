@@ -29,7 +29,7 @@ This policy defines how official PulsePing binaries are built, reviewed, approve
 
 ## Privacy and external communication
 
-PulsePing has no telemetry, analytics, advertising, account system, silent update agent, or maintainer-controlled backend. It sends ICMP echo requests only to targets explicitly entered by the user after monitoring starts. A background update check on every application launch, or a user-requested manual check, sends the installed application version to the official GitHub Releases API over HTTPS, but never sends monitored targets, ping history, or imported host data. PulsePing does not scan IP ranges, discover subnets, enumerate addresses, or automatically download or install updates.
+PulsePing has no telemetry, analytics, advertising, account system, silent update agent, or maintainer-controlled backend. It sends ICMP echo requests only to targets explicitly entered by the user after monitoring starts. A background update check on every application launch, or a user-requested manual check, sends the installed application version to the official GitHub Releases API over HTTPS, but never sends monitored targets, ping history, or imported host data. PulsePing does not scan IP ranges, discover subnets, enumerate addresses, or download updates without the user approving the download. In-app downloads come from the official release assets and are verified against GitHub's SHA-256 digest. Installation requires a separate confirmation, checks the application identity/version and checksum again, replaces the executable with rollback protection, and restarts PulsePing. Checksum verification is an integrity check, not a substitute for code signing.
 
 ## Key protection
 

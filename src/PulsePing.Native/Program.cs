@@ -12,9 +12,10 @@ namespace PulsePingNative;
 internal static class Program
 {
     [STAThread]
-    private static void Main()
+    private static void Main(string[] args)
     {
         ApplicationConfiguration.Initialize();
+        if (args.Length == 1 && args[0] == "--apply-update") { UpdateInstaller.Run(); return; }
         Application.Run(new MainForm());
     }
 }
@@ -529,18 +530,16 @@ internal sealed class MainForm : Form
             if (IsDisposed || Disposing) return;
             if (result.IsUpdateAvailable)
             {
-                DialogResult openRelease = MessageBox.Show(this,
+                DialogResult download = MessageBox.Show(this,
                     $"PulsePing {result.LatestVersionText} is available.\n" +
                     $"You are currently using {UpdateChecker.CurrentVersionText}.\n\n" +
-                    "Open the verified GitHub release page? PulsePing will not download or install anything automatically.",
+                    "Download the update now? You can review the download progress and choose when to install.",
                     "PulsePing update available", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
-                if (openRelease == DialogResult.Yes)
+                if (download == DialogResult.Yes)
                 {
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = result.ReleasePage.AbsoluteUri,
-                        UseShellExecute = true
-                    });
+                    using var updater = new UpdateDownloadDialog(result, _theme);
+                    updater.ShowDialog(this);
+                    if (updater.InstallRequested) Application.Exit();
                 }
             }
             else if (showNoUpdateMessage)
@@ -628,202 +627,223 @@ internal sealed class MainForm : Form
 
 internal sealed class AboutDialog : Form
 {
-    [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
-    private static extern int DwmSetWindowAttribute(IntPtr window, int attribute,
-        ref int value, int valueSize);
-
-    private readonly AppTheme _theme;
     private readonly BrandMark _mark = new();
-    private readonly System.Windows.Forms.Timer _animationTimer = new() { Interval = 20 };
+    private readonly System.Windows.Forms.Timer _animationTimer = new() { Interval = 30 };
     private readonly System.Diagnostics.Stopwatch _animationClock = System.Diagnostics.Stopwatch.StartNew();
-    private float _animationPhase;
+    private readonly TableLayoutPanel _content;
+    private readonly Panel _viewport;
+    private readonly CreatorName _creator;
 
     public AboutDialog(AppTheme theme, Icon? appIcon)
     {
-        _theme = theme;
         Text = "About PulsePing";
         StartPosition = FormStartPosition.CenterParent;
-        FormBorderStyle = FormBorderStyle.FixedDialog;
+        AutoScaleDimensions = new SizeF(96f, 96f);
+        AutoScaleMode = AutoScaleMode.Dpi;
+        Font = Typography.Interface(10f);
+        BackColor = theme.Background;
+        ForeColor = theme.Foreground;
+        ClientSize = new Size(680, 720);
+        MinimumSize = new Size(420, 360);
         MaximizeBox = false;
         MinimizeBox = false;
         ShowInTaskbar = false;
-        AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(740, 700);
-        MinimumSize = Size;
-        MaximumSize = Size;
-        BackColor = theme.Background;
-        Font = Typography.Interface(9.5f);
         if (appIcon is not null) Icon = appIcon;
-        SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
-                 ControlStyles.OptimizedDoubleBuffer, true);
 
+        var root = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2,
+            BackColor = theme.Background, Margin = Padding.Empty
+        };
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        Controls.Add(root);
+
+        _viewport = new Panel
+        {
+            Dock = DockStyle.Fill, AutoScroll = true, Margin = Padding.Empty,
+            BackColor = theme.Background
+        };
+        root.Controls.Add(_viewport, 0, 0);
+        _content = new TableLayoutPanel
+        {
+            AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 1, RowCount = 0, Padding = new Padding(28, 24, 28, 20),
+            Margin = Padding.Empty, BackColor = theme.Background
+        };
+        _content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        _viewport.Controls.Add(_content);
+
+        var header = new TableLayoutPanel
+        {
+            AutoSize = true, Dock = DockStyle.Top, ColumnCount = 2, RowCount = 1,
+            Margin = new Padding(0, 0, 0, 22)
+        };
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         _mark.Accent = theme.Accent;
         _mark.BackColor = theme.Background;
-        _mark.SetBounds(32, 26, 72, 72);
-        Controls.Add(_mark);
+        _mark.Size = new Size(64, 64);
+        _mark.Margin = new Padding(0, 4, 20, 0);
+        header.Controls.Add(_mark, 0, 0);
+        var identity = Stack();
+        identity.Controls.Add(Label("PulsePing", Typography.Royal(25f, FontStyle.Bold), theme.Foreground));
+        identity.Controls.Add(Label("NETWORK MONITOR FOR WINDOWS", Typography.Interface(8.5f, FontStyle.Bold), theme.Accent));
+        identity.Controls.Add(Label($"Version {UpdateChecker.CurrentVersionText}", Typography.Interface(9.5f), theme.Muted));
+        header.Controls.Add(identity, 1, 0);
+        AddRow(header);
+        AddSection("ABOUT THE PRODUCT",
+            "PulsePing is a Windows workspace for monitoring the reachability, latency and stability of individual network hosts in real time.");
+        AddSection("CORE CAPABILITIES",
+            "• Monitor multiple hosts with configurable intervals and timeouts.\n" +
+            "• View live responses, latency history and packet-loss statistics.\n" +
+            "• Pause, resume, pop out and pin individual monitors on top.\n" +
+            "• Import and export hosts, with light and dark themes.\n" +
+            "• Check for updates in the background on every launch.");
+        AddSection("PRIVACY & RESPONSIBLE DESIGN",
+            "PulsePing pings only addresses you enter. It performs no range scanning, network discovery or telemetry. Startup update checks contact GitHub without sending monitored addresses or ping history.");
 
+        var credits = Stack();
+        credits.Padding = new Padding(18, 14, 18, 14);
+        credits.BackColor = DrawingTools.Mix(theme.Card, theme.Accent, .07f);
+        credits.Margin = new Padding(0, 4, 0, 0);
+        credits.Controls.Add(Label("Created and developed by", Typography.Interface(9.5f), theme.Muted));
+        _creator = new CreatorName(theme)
+        {
+            Dock = DockStyle.Top, AutoSize = true, Margin = new Padding(0, 3, 0, 8),
+            Font = new Font("Calibri", 18f, FontStyle.Regular, GraphicsUnit.Point)
+        };
+        credits.Controls.Add(_creator);
+        credits.Controls.Add(Label("Company / Publisher: Shubham Kasar", Typography.Interface(9f), theme.Muted));
+        credits.Controls.Add(Label("© 2026 Shubham Kasar. All rights reserved.", Typography.Interface(9f), theme.Muted));
+        AddRow(credits);
+
+        var footer = new FlowLayoutPanel
+        {
+            Dock = DockStyle.Fill, AutoSize = true, FlowDirection = FlowDirection.RightToLeft,
+            Padding = new Padding(24, 12, 24, 16), Margin = Padding.Empty,
+            BackColor = theme.Background, WrapContents = false
+        };
         var close = new PillButton
         {
-            Text = "Close",
-            Font = Typography.Interface(9.5f, FontStyle.Bold),
-            FillColor = theme.Accent,
-            HoverColor = theme.AccentHover,
-            TextColor = Color.White,
-            BackColor = theme.Background,
-            DialogResult = DialogResult.OK
+            Text = "Close", Size = new Size(112, 38), Margin = Padding.Empty,
+            Font = Typography.Interface(10f, FontStyle.Bold), FillColor = theme.Accent,
+            HoverColor = theme.AccentHover, TextColor = Color.White,
+            BackColor = theme.Background, DialogResult = DialogResult.OK
         };
-        close.SetBounds(590, 642, 118, 40);
-        Controls.Add(close);
+        footer.Controls.Add(close);
+        root.Controls.Add(footer, 0, 1);
         AcceptButton = close;
         CancelButton = close;
-
+        _viewport.ClientSizeChanged += (_, _) => FitContent();
+        Shown += (_, _) =>
+        {
+            Rectangle area = Screen.FromControl(this).WorkingArea;
+            Size = new Size(Math.Min(Width, area.Width - 24), Math.Min(Height, area.Height - 24));
+            FitContent();
+            _animationTimer.Start();
+        };
         _animationTimer.Tick += (_, _) =>
         {
-            // Keep the creator-name reflection calm and premium rather than constantly flashing.
-            _animationPhase = (float)(_animationClock.Elapsed.TotalSeconds * .20 % 1.0);
             _mark.AnimationPhase = (float)(_animationClock.Elapsed.TotalSeconds * .55 % 1.0);
+            _creator.Phase = (float)(_animationClock.Elapsed.TotalSeconds * .20 % 1.0);
             _mark.Invalidate();
-            Invalidate(new Rectangle(28, 18, 470, 102));
-            Invalidate(new Rectangle(30, 540, 680, 96));
+            _creator.Invalidate();
         };
-        _animationTimer.Start();
-    }
 
-    protected override void OnFormClosed(FormClosedEventArgs e)
-    {
-        _animationTimer.Stop();
-        _animationTimer.Dispose();
-        base.OnFormClosed(e);
-    }
-
-    protected override void OnHandleCreated(EventArgs e)
-    {
-        base.OnHandleCreated(e);
-        bool dark = ReferenceEquals(_theme, Themes.Dark);
-        int enabled = dark ? 1 : 0;
-        int captionColor = ColorTranslator.ToWin32(dark ? _theme.Toolbar : Color.White);
-        int captionTextColor = ColorTranslator.ToWin32(dark ? _theme.Foreground : Color.FromArgb(12, 25, 43));
-        try
+        void AddSection(string heading, string body)
         {
-            if (DwmSetWindowAttribute(Handle, 20, ref enabled, sizeof(int)) != 0)
-                DwmSetWindowAttribute(Handle, 19, ref enabled, sizeof(int));
-            DwmSetWindowAttribute(Handle, 35, ref captionColor, sizeof(int));
-            DwmSetWindowAttribute(Handle, 36, ref captionTextColor, sizeof(int));
+            var section = Stack();
+            section.Margin = new Padding(0, 0, 0, 20);
+            var caption = Label(heading, Typography.Interface(9f, FontStyle.Bold), theme.Accent);
+            caption.Margin = new Padding(0, 0, 0, 7);
+            section.Controls.Add(caption);
+            section.Controls.Add(Label(body, Font, theme.Foreground));
+            AddRow(section);
         }
-        catch { }
     }
 
-    protected override void OnPaint(PaintEventArgs e)
+    private void FitContent()
     {
-        base.OnPaint(e);
-        var g = e.Graphics;
-        g.SmoothingMode = SmoothingMode.AntiAlias;
-        g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-        using var titleFont = Typography.Royal(24f, FontStyle.Bold);
-        using var subtitleFont = Typography.Interface(9.5f);
-        using var productFont = Typography.Interface(8f, FontStyle.Bold);
-        using var headingFont = Typography.Interface(8.5f, FontStyle.Bold);
-        using var bodyFont = Typography.Interface(9.5f);
-        using var ownerFont = new Font("Calibri", 13f, FontStyle.Regular, GraphicsUnit.Point);
-        using var legalFont = Typography.Interface(8.5f);
-        using var foreground = new SolidBrush(_theme.Foreground);
-        using var muted = new SolidBrush(_theme.Muted);
-        using var accent = new SolidBrush(_theme.Accent);
-
-        float haloPulse = .5f + .5f * MathF.Sin(_animationPhase * MathF.PI * 2f);
-        using (var halo = new SolidBrush(Color.FromArgb((int)(8 + haloPulse * 14), _theme.Accent)))
-            g.FillEllipse(halo, 22, 16, 92, 92);
-
-        g.DrawString("PulsePing", titleFont, foreground, 122, 22);
-        g.DrawString("NETWORK MONITOR FOR WINDOWS", productFont, accent, 124, 69);
-        string version = $"Version {UpdateChecker.CurrentVersionText}";
-        SizeF versionSize = g.MeasureString(version, subtitleFont);
-        g.DrawString(version, subtitleFont, muted, 708 - versionSize.Width, 69);
-        using (var separator = new Pen(_theme.Separator))
-            g.DrawLine(separator, 32, 118, 708, 118);
-
-        DrawHeading(g, "ABOUT THE PRODUCT", headingFont, accent, 32, 142);
-        DrawBody(g,
-            "PulsePing is a focused, high-performance Windows workspace for monitoring the reachability, " +
-            "latency and stability of individual network hosts in real time.",
-            bodyFont, _theme.Foreground, new Rectangle(32, 169, 676, 62));
-
-        DrawHeading(g, "CORE CAPABILITIES", headingFont, accent, 32, 248);
-        DrawBody(g,
-            "• Multi-host ICMP monitoring with configurable intervals and timeouts\n" +
-            "• Animated response stream, latency history and packet-loss statistics\n" +
-            "• Per-host pause, resume, independent pop-out and always-on-top pinning\n" +
-            "• Import and export, responsive cards, plus light and dark themes\n" +
-            "• Background update checks on every launch through GitHub Releases",
-            bodyFont, _theme.Foreground, new Rectangle(32, 275, 676, 120));
-
-        DrawHeading(g, "PRIVACY & RESPONSIBLE DESIGN", headingFont, accent, 32, 414);
-        DrawBody(g,
-            "PulsePing pings only user-entered addresses and performs no range scanning, discovery or telemetry. " +
-            "Startup update checks contact GitHub without sending monitored targets or ping history.",
-            bodyFont, _theme.Foreground, new Rectangle(32, 441, 676, 72));
-
-        using (var ownerPath = DrawingTools.Rounded(new RectangleF(32, 536, 676, 88), 14))
-        using (var ownerFill = new SolidBrush(DrawingTools.Mix(_theme.Card, _theme.Accent, .07f)))
-            g.FillPath(ownerFill, ownerPath);
-
-        const string ownerPrefix = "Created and developed by ";
-        const string ownerName = "Shubham Kasar";
-        const float ownerX = 54;
-        const float ownerY = 548;
-        g.DrawString(ownerPrefix, ownerFont, foreground, ownerX, ownerY);
-        float nameX = ownerX + g.MeasureString(ownerPrefix, ownerFont).Width - 3;
-        DrawShiningName(g, ownerName, ownerFont, nameX, ownerY,
-            _theme.Foreground, DrawingTools.Mix(Color.White, _theme.Accent, .22f), _animationPhase);
-
-        g.DrawString("Company / Publisher: Shubham Kasar", legalFont, muted, 54, 580);
-        g.DrawString("© 2026 Shubham Kasar. All rights reserved.", legalFont, muted, 54, 601);
+        // Reserve the scrollbar gutter even before it appears, avoiding reflow loops.
+        int width = Math.Max(1, _viewport.ClientSize.Width - SystemInformation.VerticalScrollBarWidth);
+        if (_content.Width != width || _content.MaximumSize.Width != width) { _content.MaximumSize = new Size(width, 0); _content.MinimumSize = new Size(width, 0); _content.Width = width; }
     }
 
-    private static void DrawHeading(Graphics g, string text, Font font, Brush brush, float x, float y) =>
-        g.DrawString(text, font, brush, x, y);
-
-    private static void DrawBody(Graphics g, string text, Font font, Color color, Rectangle bounds) =>
-        TextRenderer.DrawText(g, text, font, bounds, color,
-            TextFormatFlags.WordBreak | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix |
-            TextFormatFlags.TextBoxControl);
-
-    private static void DrawShiningName(Graphics g, string text, Font font, float x, float y,
-        Color baseColor, Color reflectionColor, float phase)
+    private void AddRow(Control control)
     {
-        using var letterPath = new GraphicsPath();
-        float emSize = font.SizeInPoints * g.DpiY / 72f;
-        letterPath.AddString(text, font.FontFamily, (int)font.Style, emSize,
-            new PointF(x, y), StringFormat.GenericTypographic);
-
-        RectangleF bounds = letterPath.GetBounds();
-
-        using (var nameBrush = new SolidBrush(baseColor))
-            g.FillPath(nameBrush, letterPath);
-
-        // The moving reflection is clipped to the glyphs, so no rectangle ever appears
-        // behind the name. Layered diagonal bands make the highlight feel softly reflected.
-        float reflectionX = bounds.Left - 42f + (bounds.Width + 84f) * phase;
-        GraphicsState state = g.Save();
-        g.SetClip(letterPath, CombineMode.Intersect);
-        DrawReflectionBand(g, bounds, reflectionX, 15f, Color.FromArgb(32, reflectionColor));
-        DrawReflectionBand(g, bounds, reflectionX, 7f, Color.FromArgb(72, reflectionColor));
-        DrawReflectionBand(g, bounds, reflectionX, 2.2f, Color.FromArgb(150, reflectionColor));
-        g.Restore(state);
+        int row = _content.RowCount++;
+        _content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _content.Controls.Add(control, 0, row);
     }
 
-    private static void DrawReflectionBand(Graphics g, RectangleF bounds, float x, float halfWidth, Color color)
+    private static TableLayoutPanel Stack()
     {
-        const float slant = 13f;
-        PointF[] band =
+        var panel = new TableLayoutPanel
         {
-            new(x - halfWidth, bounds.Top - 4f),
-            new(x + halfWidth, bounds.Top - 4f),
-            new(x + halfWidth + slant, bounds.Bottom + 4f),
-            new(x - halfWidth + slant, bounds.Bottom + 4f)
+            AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Top,
+            ColumnCount = 1, RowCount = 0, Margin = Padding.Empty, Padding = Padding.Empty,
+            GrowStyle = TableLayoutPanelGrowStyle.AddRows
         };
-        using var brush = new SolidBrush(color);
-        g.FillPolygon(brush, band);
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        return panel;
+    }
+
+    private static Label Label(string text, Font font, Color color) => new()
+    {
+        Text = text, Font = font, ForeColor = color, AutoSize = true,
+        Dock = DockStyle.Top, Margin = new Padding(0, 0, 0, 3),
+        UseMnemonic = false
+    };
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) { _animationTimer.Stop(); _animationTimer.Dispose(); }
+        base.Dispose(disposing);
+    }
+
+    private sealed class CreatorName : Control
+    {
+        private readonly AppTheme _theme;
+        [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+        public float Phase { get; set; }
+        public CreatorName(AppTheme theme)
+        {
+            _theme = theme;
+            Text = "Shubham Kasar";
+            AccessibleName = Text;
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
+                ControlStyles.OptimizedDoubleBuffer | ControlStyles.SupportsTransparentBackColor, true);
+            BackColor = Color.Transparent;
+        }
+
+        public override Size GetPreferredSize(Size proposedSize) =>
+            TextRenderer.MeasureText(Text, Font) + new Size(0, 6);
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using var letters = new GraphicsPath();
+            letters.AddString(Text, Font.FontFamily, (int)Font.Style, Font.SizeInPoints * g.DpiY / 72f,
+                new PointF(0, 0), StringFormat.GenericTypographic);
+            using var fill = new SolidBrush(_theme.Foreground);
+            g.FillPath(fill, letters);
+            var state = g.Save();
+            g.SetClip(letters, CombineMode.Intersect);
+            RectangleF bounds = letters.GetBounds();
+            float x = bounds.Left - 40 + (bounds.Width + 80) * Phase;
+            using var reflection = new LinearGradientBrush(new RectangleF(x - 20, 0, 40, Math.Max(1, Height)),
+                Color.Transparent, Color.Transparent, 0f);
+            reflection.InterpolationColors = new ColorBlend
+            {
+                Colors = [Color.Transparent, Color.FromArgb(130, Color.White), Color.Transparent],
+                Positions = [0f, .5f, 1f]
+            };
+            g.FillRectangle(reflection, x - 20, 0, 40, Height);
+            g.Restore(state);
+        }
     }
 }
 

@@ -11,7 +11,7 @@
     <Authors>Shubham Kasar</Authors>
     <Company>Shubham Kasar</Company>
     <Description>Native Windows multi-host ICMP monitoring application.</Description>
-    <Version>1.0.2</Version>
+    <Version>1.0.3</Version>
     <PackageLicenseExpression>GPL-3.0-only</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/ishubhamkasar/PulsePing</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
