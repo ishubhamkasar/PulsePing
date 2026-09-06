@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Effective date: August 31, 2026
+Effective date: September 6, 2026
 
 PulsePing is a local Windows network-monitoring application created and developed by Shubham Kasar.
 
@@ -14,9 +14,15 @@ PulsePing sends ICMP echo requests only to a hostname or IP address explicitly e
 
 PulsePing does not perform IP-range scanning, subnet discovery, address enumeration, or automatic network discovery.
 
+## Update checks
+
+PulsePing can check the official GitHub Releases API for newer versions. Manual checks occur only when the user selects **Check for updates**. Automatic checks are disabled until the user explicitly enables them and then run at most once every 24 hours while PulsePing starts.
+
+An update request sends the installed PulsePing version as part of its HTTPS user-agent and exposes ordinary connection metadata, such as the public IP address, to GitHub. It never includes monitored hostnames, IP addresses, ping history, imported host lists, or other application content. PulsePing does not automatically download or install releases; it only offers to open the official GitHub release page.
+
 ## Local data
 
-Application settings and any files the user chooses to import or export remain on the user's computer. PulsePing does not upload them.
+The automatic-update preference and last successful check time are stored in the user's local application-data folder. Any files the user chooses to import or export also remain on the user's computer. PulsePing does not upload them.
 
 ## Operating-system behavior
 

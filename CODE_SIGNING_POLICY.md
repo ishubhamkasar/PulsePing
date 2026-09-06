@@ -29,7 +29,7 @@ This policy defines how official PulsePing binaries are built, reviewed, approve
 
 ## Privacy and external communication
 
-PulsePing has no telemetry, analytics, advertising, account system, update agent, or cloud backend. It communicates only by sending ICMP echo requests to targets explicitly entered by the user after the user starts monitoring. It does not scan IP ranges, discover subnets, enumerate addresses, or contact a maintainer-controlled service.
+PulsePing has no telemetry, analytics, advertising, account system, silent update agent, or maintainer-controlled backend. It sends ICMP echo requests only to targets explicitly entered by the user after monitoring starts. A user-requested or explicitly enabled update check sends the installed application version to the official GitHub Releases API over HTTPS, but never sends monitored targets, ping history, or imported host data. PulsePing does not scan IP ranges, discover subnets, enumerate addresses, or automatically download or install updates.
 
 ## Key protection
 
