@@ -91,3 +91,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $asset = "artifacts/PulsePing-$($env:GITHUB_REF_NAME)-unsigned-win-x64.exe"
+          Copy-Item -LiteralPath artifacts/PulsePing1.0.exe -Destination $asset
+          gh release create "$env:GITHUB_REF_NAME" $asset --repo "$env:GITHUB_REPOSITORY" --title "PulsePing $env:GITHUB_REF_NAME - public preview" --notes "PulsePing $env:GITHUB_REF_NAME is available as a public preview. This Windows executable is unsigned, so Windows may show an Unknown Publisher warning. Download only from this official PulsePing release page."
