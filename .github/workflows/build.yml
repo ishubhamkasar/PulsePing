@@ -67,13 +67,13 @@ jobs:
 
       - name: Create evaluation archive
         shell: pwsh
-        run: Compress-Archive -LiteralPath artifacts/PulsePing1.0.exe -DestinationPath artifacts/PulsePing1.0-unsigned-win-x64.zip -CompressionLevel Optimal -Force
+        run: Compress-Archive -LiteralPath artifacts/PulsePing1.0.exe -DestinationPath artifacts/PulsePing1.0-win-x64.zip -CompressionLevel Optimal -Force
 
       - name: Attach archive to existing release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ inputs.release_tag }}" artifacts/PulsePing1.0-unsigned-win-x64.zip --clobber --repo "${{ github.repository }}"
+        run: gh release upload "${{ inputs.release_tag }}" artifacts/PulsePing1.0-win-x64.zip --clobber --repo "${{ github.repository }}"
 
   publish-public-preview:
     needs: build-windows-x64
@@ -94,6 +94,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $asset = "artifacts/PulsePing-$($env:GITHUB_REF_NAME)-unsigned-win-x64.exe"
+          $asset = "artifacts/PulsePing-$($env:GITHUB_REF_NAME)-win-x64.exe"
           Copy-Item -LiteralPath artifacts/PulsePing1.0.exe -Destination $asset
           gh release create "$env:GITHUB_REF_NAME" $asset --repo "$env:GITHUB_REPOSITORY" --title "PulsePing $env:GITHUB_REF_NAME - public preview" --notes "PulsePing $env:GITHUB_REF_NAME is available as a public preview. This Windows executable is unsigned, so Windows may show an Unknown Publisher warning. Download only from this official PulsePing release page."
