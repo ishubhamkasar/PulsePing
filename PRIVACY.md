@@ -6,7 +6,7 @@ PulsePing is a local Windows network-monitoring application created and develope
 
 ## Data collection
 
-PulsePing does not collect, sell, transmit, or share personal information. It contains no telemetry, analytics, advertising, user accounts, or cloud service.
+PulsePing contains no telemetry, analytics, advertising, user accounts, or cloud storage. Update checks expose ordinary connection metadata to GitHub as described below.
 
 ## Network communication
 
@@ -16,13 +16,13 @@ PulsePing does not perform IP-range scanning, subnet discovery, address enumerat
 
 ## Update checks
 
-PulsePing can check the official GitHub Releases API for newer versions. Manual checks occur only when the user selects **Check for updates**. Automatic checks are disabled until the user explicitly enables them and then run at most once every 24 hours while PulsePing starts.
+PulsePing checks the official GitHub Releases API in the background every time the application opens. It shows a popup only when a newer version is available; startup checks remain silent when the app is current or the service cannot be reached. Manual checks are also available through **Check for updates**.
 
 An update request sends the installed PulsePing version as part of its HTTPS user-agent and exposes ordinary connection metadata, such as the public IP address, to GitHub. It never includes monitored hostnames, IP addresses, ping history, imported host lists, or other application content. PulsePing does not automatically download or install releases; it only offers to open the official GitHub release page.
 
 ## Local data
 
-The automatic-update preference and last successful check time are stored in the user's local application-data folder. Any files the user chooses to import or export also remain on the user's computer. PulsePing does not upload them.
+Update checks do not store preferences or check history. Any files the user chooses to import or export also remain on the user's computer. PulsePing does not upload them.
 
 ## Operating-system behavior
 

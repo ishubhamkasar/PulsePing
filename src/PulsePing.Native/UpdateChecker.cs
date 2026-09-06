@@ -8,55 +8,6 @@ using System.Text.Json.Serialization;
 
 namespace PulsePingNative;
 
-internal sealed class UpdatePreferences
-{
-    public bool AutomaticChecksConfigured { get; set; }
-    public bool AutomaticChecksEnabled { get; set; }
-    public DateTimeOffset? LastSuccessfulCheckUtc { get; set; }
-}
-
-internal static class UpdatePreferencesStore
-{
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true
-    };
-
-    private static readonly string SettingsDirectory = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PulsePing");
-
-    private static readonly string SettingsPath = Path.Combine(SettingsDirectory, "settings.json");
-
-    public static UpdatePreferences Load()
-    {
-        try
-        {
-            if (!File.Exists(SettingsPath)) return new UpdatePreferences();
-            return JsonSerializer.Deserialize<UpdatePreferences>(File.ReadAllText(SettingsPath), JsonOptions)
-                   ?? new UpdatePreferences();
-        }
-        catch
-        {
-            return new UpdatePreferences();
-        }
-    }
-
-    public static void Save(UpdatePreferences preferences)
-    {
-        try
-        {
-            Directory.CreateDirectory(SettingsDirectory);
-            string temporaryPath = SettingsPath + ".tmp";
-            File.WriteAllText(temporaryPath, JsonSerializer.Serialize(preferences, JsonOptions));
-            File.Move(temporaryPath, SettingsPath, true);
-        }
-        catch
-        {
-            // A read-only profile must not stop the monitor from working.
-        }
-    }
-}
-
 internal sealed record UpdateCheckResult(
     Version CurrentVersion,
     Version LatestVersion,

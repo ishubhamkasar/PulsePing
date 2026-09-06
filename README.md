@@ -12,7 +12,7 @@ PulsePing is intentionally focused: it sends ICMP echo requests only to hostname
 - Pause and resume each monitor independently.
 - Open a host in an independent pop-out window.
 - Pin a pop-out window above other applications.
-- Check GitHub Releases manually or through an optional once-daily startup check.
+- Check GitHub Releases quietly in the background on every launch, with a notification when an update is available. Manual checks are also available.
 - Light and dark themes.
 - Single-file, self-contained Windows x64 release.
 
@@ -35,7 +35,7 @@ GitHub Actions also builds the same unsigned artifact for every push and pull re
 
 ## Privacy and network behavior
 
-PulsePing has no telemetry, advertising, analytics, account system, or cloud backend. ICMP traffic is initiated only after the user enters a target and starts a monitor. Update checks use GitHub Releases only when requested manually or explicitly enabled by the user; they never include monitored addresses or ping history. See [PRIVACY.md](PRIVACY.md) for details.
+PulsePing has no telemetry, advertising, analytics, account system, or cloud backend. ICMP traffic is initiated only after the user enters a target and starts a monitor. Update checks use GitHub Releases on every launch and when requested manually; they never include monitored addresses or ping history. See [PRIVACY.md](PRIVACY.md) for details.
 
 ## Security
 

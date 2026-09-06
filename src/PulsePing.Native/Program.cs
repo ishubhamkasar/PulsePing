@@ -285,7 +285,6 @@ internal sealed class MainForm : Form
     private readonly List<MonitorCard> _cards = [];
     private readonly PillButton _addButton = new();
     private readonly PillButton _menuButton = new();
-    private readonly UpdatePreferences _updatePreferences = UpdatePreferencesStore.Load();
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private AppTheme _theme = Themes.Light;
     private int _layoutColumns = 2;
@@ -332,7 +331,7 @@ internal sealed class MainForm : Form
         Shown += async (_, _) =>
         {
             LayoutCards();
-            await InitializeUpdateChecksAsync();
+            await CheckForUpdatesAsync(showNoUpdateMessage: false);
         };
         FormClosed += (_, _) =>
         {
@@ -503,20 +502,6 @@ internal sealed class MainForm : Form
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Check for updates…", null, async (_, _) =>
             await CheckForUpdatesAsync(showNoUpdateMessage: true));
-        var automaticUpdates = new ToolStripMenuItem("Automatically check for updates")
-        {
-            Checked = _updatePreferences.AutomaticChecksEnabled,
-            CheckOnClick = true
-        };
-        automaticUpdates.Click += async (_, _) =>
-        {
-            _updatePreferences.AutomaticChecksConfigured = true;
-            _updatePreferences.AutomaticChecksEnabled = automaticUpdates.Checked;
-            UpdatePreferencesStore.Save(_updatePreferences);
-            if (automaticUpdates.Checked)
-                await CheckForUpdatesAsync(showNoUpdateMessage: true);
-        };
-        menu.Items.Add(automaticUpdates);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("About PulsePing", null, (_, _) =>
         {
@@ -524,30 +509,6 @@ internal sealed class MainForm : Form
             about.ShowDialog(this);
         });
         menu.Show(_menuButton, new Point(0, _menuButton.Height));
-    }
-
-    private async Task InitializeUpdateChecksAsync()
-    {
-        if (!_updatePreferences.AutomaticChecksConfigured)
-        {
-            DialogResult choice = MessageBox.Show(this,
-                "PulsePing can check GitHub Releases when it starts, at most once every 24 hours.\n\n" +
-                "The check sends the installed PulsePing version and standard HTTPS connection metadata " +
-                "to GitHub. It never sends monitored addresses, ping history, or personal data.\n\n" +
-                "Enable automatic update checks? You can change this later from the menu.",
-                "Automatic update checks", MessageBoxButtons.YesNo, MessageBoxIcon.Information,
-                MessageBoxDefaultButton.Button2);
-
-            if (IsDisposed || Disposing) return;
-            _updatePreferences.AutomaticChecksConfigured = true;
-            _updatePreferences.AutomaticChecksEnabled = choice == DialogResult.Yes;
-            UpdatePreferencesStore.Save(_updatePreferences);
-        }
-
-        bool checkIsDue = !_updatePreferences.LastSuccessfulCheckUtc.HasValue ||
-            DateTimeOffset.UtcNow - _updatePreferences.LastSuccessfulCheckUtc.Value >= TimeSpan.FromHours(24);
-        if (_updatePreferences.AutomaticChecksEnabled && checkIsDue)
-            await CheckForUpdatesAsync(showNoUpdateMessage: false);
     }
 
     private async Task CheckForUpdatesAsync(bool showNoUpdateMessage)
@@ -564,8 +525,6 @@ internal sealed class MainForm : Form
         try
         {
             UpdateCheckResult result = await UpdateChecker.CheckAsync(_lifetimeCancellation.Token);
-            _updatePreferences.LastSuccessfulCheckUtc = DateTimeOffset.UtcNow;
-            UpdatePreferencesStore.Save(_updatePreferences);
 
             if (IsDisposed || Disposing) return;
             if (result.IsUpdateAvailable)
@@ -795,13 +754,13 @@ internal sealed class AboutDialog : Form
             "• Animated response stream, latency history and packet-loss statistics\n" +
             "• Per-host pause, resume, independent pop-out and always-on-top pinning\n" +
             "• Import and export, responsive cards, plus light and dark themes\n" +
-            "• Consent-based update checks through official GitHub Releases",
+            "• Background update checks on every launch through GitHub Releases",
             bodyFont, _theme.Foreground, new Rectangle(32, 275, 676, 120));
 
         DrawHeading(g, "PRIVACY & RESPONSIBLE DESIGN", headingFont, accent, 32, 414);
         DrawBody(g,
             "PulsePing pings only user-entered addresses and performs no range scanning, discovery or telemetry. " +
-            "Optional update checks contact GitHub after consent without sending monitored targets or ping history.",
+            "Startup update checks contact GitHub without sending monitored targets or ping history.",
             bodyFont, _theme.Foreground, new Rectangle(32, 441, 676, 72));
 
         using (var ownerPath = DrawingTools.Rounded(new RectangleF(32, 536, 676, 88), 14))
